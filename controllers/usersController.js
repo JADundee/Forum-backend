@@ -18,8 +18,8 @@ const getAllUsers = async (req, res) => {
 }
 
 // @desc Create new user
-// @route POST /users
-// @access Private
+// @route POST /register
+// @access Public
 const createNewUser = async (req, res) => {
     const { username, password, roles } = req.body
 
