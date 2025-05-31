@@ -7,6 +7,7 @@ const User = require('../models/User')
 const getAllNotes = async (req, res) => {
     // Get all notes from MongoDB
     const notes = await Note.find().lean()
+   
 
     // If no notes 
     if (!notes?.length) {
@@ -18,7 +19,9 @@ const getAllNotes = async (req, res) => {
     // You could also do this with a for...of loop
     const notesWithUser = await Promise.all(notes.map(async (note) => {
         const user = await User.findById(note.user).lean().exec()
+       
         return { ...note, username: user.username }
+        
     }))
 
     res.json(notesWithUser)
@@ -28,11 +31,17 @@ const getAllNotes = async (req, res) => {
 // @route POST /notes
 // @access Private
 const createNewNote = async (req, res) => {
-    const { user, title, text } = req.body
+    const { title, text } = req.body
+    
 
     // Confirm data
-    if (!user || !title || !text) {
+    if (!title || !text) {
         return res.status(400).json({ message: 'All fields are required' })
+    }
+
+    // Get user from authentication middleware
+   if (!req.user || !req.user._id) {
+        return res.status(401).json({ message: 'Unauthorized - User not found' });
     }
 
     // Check for duplicate title
@@ -43,14 +52,14 @@ const createNewNote = async (req, res) => {
     }
 
     // Create and store the new user 
-    const note = await Note.create({ user, title, text })
-
+    const note = await Note.create({ user: req.user._id, title, text })
+    
     if (note) { // Created 
         return res.status(201).json({ message: 'New note created' })
     } else {
         return res.status(400).json({ message: 'Invalid note data received' })
     }
-
+    
 }
 
 // @desc Update a note
