@@ -11,4 +11,8 @@ router.route('/')
     .patch(notesController.updateNote)
     .delete(notesController.deleteNote)
 
+router.route('/:noteId/replies')
+    .get(notesController.getReplies)
+    .post(notesController.addReply)
+
 module.exports = router

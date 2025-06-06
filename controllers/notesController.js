@@ -1,5 +1,6 @@
 const Note = require('../models/Note')
 const User = require('../models/User')
+const Reply = require('../models/Reply')
 
 // @desc Get all notes 
 // @route GET /notes
@@ -123,9 +124,37 @@ const deleteNote = async (req, res) => {
     res.json(reply)
 }
 
+// GET /notes/:noteId/replies
+const getReplies = async (req, res) => {
+    const noteId = req.params.noteId
+    const replies = await Reply.find({ note: noteId }).lean()
+    res.json(replies)
+}
+
+// POST /notes/:noteId/replies
+const addReply = async (req, res) => {
+    try {
+    const noteId = req.params.noteId
+    const { replyText } = req.body
+    const user = req.user
+
+    if (!replyText) {
+        return res.status(400).json({ message: 'Reply is required' })
+    }
+
+    const reply = await Reply.create({ note: noteId, text: replyText, user: user._id })
+    res.json(reply)
+} catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Server error' })
+}
+}
+
 module.exports = {
     getAllNotes,
     createNewNote,
     updateNote,
-    deleteNote
+    deleteNote,
+    getReplies,
+    addReply
 }
