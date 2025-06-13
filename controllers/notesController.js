@@ -126,9 +126,12 @@ const deleteNote = async (req, res) => {
 
 // GET /notes/:noteId/replies
 const getReplies = async (req, res) => {
-    const noteId = req.params.noteId
-    const replies = await Reply.find({ note: noteId }).lean()
-    res.json(replies)
+    const noteId = req.params.noteId;
+    if (!noteId) {
+        return res.status(400).json({ message: 'Note ID is required' });
+    }
+    const replies = await Reply.find({ note: noteId }).lean();
+    res.json(replies);
 }
 
 // POST /notes/:noteId/replies
@@ -150,11 +153,35 @@ const addReply = async (req, res) => {
 }
 }
 
+// @desc Delete a reply
+// @route DELETE /notes/replies/:replyId
+// @access Private
+const deleteReply = async (req, res) => {
+    const { replyId } = req.params
+
+    // Confirm data
+    if (!replyId) {
+        return res.status(400).json({ message: 'Reply ID required' })
+    }
+
+    // Confirm reply exists to delete 
+    const reply = await Reply.findById(replyId).exec()
+
+    if (!reply) {
+        return res.status(400).json({ message: 'Reply not found' })
+    }
+
+    const result = await reply.deleteOne()
+
+    res.json({ message: `Reply with ID ${replyId} deleted` })
+}
+
 module.exports = {
     getAllNotes,
     createNewNote,
     updateNote,
     deleteNote,
     getReplies,
-    addReply
+    addReply,
+    deleteReply
 }

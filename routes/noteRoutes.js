@@ -14,5 +14,7 @@ router.route('/')
 router.route('/:noteId/replies')
     .get(notesController.getReplies)
     .post(notesController.addReply)
-
+    
+router.route('/replies/:replyId')
+    .delete(notesController.deleteReply)
 module.exports = router
