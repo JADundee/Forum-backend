@@ -186,6 +186,17 @@ const deleteReply = async (req, res) => {
     res.json({ message: `Reply with ID ${replyId} deleted` })
 }
 
+const getNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find().sort({ createdAt: -1 })
+    res.json(notifications)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Error retrieving notifications' })
+  }
+}
+
+
 module.exports = {
     getAllNotes,
     createNewNote,
@@ -193,5 +204,6 @@ module.exports = {
     deleteNote,
     getReplies,
     addReply,
-    deleteReply
+    deleteReply,
+    getNotifications
 }
