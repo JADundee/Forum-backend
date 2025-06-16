@@ -1,6 +1,7 @@
 const Note = require('../models/Note')
 const User = require('../models/User')
 const Reply = require('../models/Reply')
+const Notification = require('../models/Notification')
 
 // @desc Get all notes 
 // @route GET /notes
@@ -147,6 +148,15 @@ const addReply = async (req, res) => {
 
     const reply = await Reply.create({ note: noteId, text: replyText, user: user._id })
     res.json(reply)
+
+     // Create a notification when a reply is added
+    const notification = new Notification({
+      userId: user._id,
+      noteId: noteId,
+      replyText: replyText,
+      username: user.username,
+    });
+    await notification.save();
 } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Server error' })
