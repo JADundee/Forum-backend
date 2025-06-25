@@ -236,7 +236,6 @@ const markAllNotificationsRead = async (req, res) => {
     );
     res.json({ message: 'All notifications marked as read', modifiedCount: result.modifiedCount });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: 'Error marking all notifications as read' });
   }
 };
