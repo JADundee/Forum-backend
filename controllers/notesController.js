@@ -155,6 +155,7 @@ const addReply = async (req, res) => {
       noteId: noteId,
       replyText: replyText,
       username: user.username,
+      read: false
     });
     await notification.save();
 } catch (error) {
@@ -187,15 +188,82 @@ const deleteReply = async (req, res) => {
 }
 
 const getNotifications = async (req, res) => {
-  try {
-    const notifications = await Notification.find().sort({ createdAt: -1 })
-    res.json(notifications)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: 'Error retrieving notifications' })
-  }
+    try {
+      const userId = String(req.user._id); 
+      const notifications = await Notification.find({ userId }).sort({ createdAt: -1 }).lean();
+      // Map _id to id and remove __v
+      const mapped = notifications.map(({ _id, __v, ...rest }) => ({
+        id: _id.toString(),
+        ...rest
+      }));
+      res.json(mapped);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error retrieving notifications' });
+    }
 }
 
+const updateNotificationRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { read } = req.body;
+    if (typeof read !== 'boolean') {
+      return res.status(400).json({ message: 'Invalid read value' });
+    }
+    const notification = await Notification.findByIdAndUpdate(
+      id,
+      { read },
+      { new: true, lean: true }
+    );
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+    // Map _id to id and remove __v
+    const { _id, __v, ...rest } = notification;
+    res.json({ id: _id.toString(), ...rest });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error updating notification' });
+  }
+};
+
+const markAllNotificationsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const result = await Notification.updateMany(
+      { userId, read: false },
+      { $set: { read: true } }
+    );
+    res.json({ message: 'All notifications marked as read', modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error marking all notifications as read' });
+  }
+};
+
+// @desc Create a notification
+// @route POST /notifications
+// @access Private
+const createNotification = async (req, res) => {
+    try {
+        const { userId, noteId, replyText, username } = req.body;
+        if (!userId || !noteId || !replyText || !username) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+        const notification = new Notification({
+            userId,
+            noteId,
+            replyText,
+            username,
+            read: false
+        });
+        await notification.save();
+        res.status(201).json(notification);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error creating notification' });
+    }
+};
 
 module.exports = {
     getAllNotes,
@@ -205,5 +273,8 @@ module.exports = {
     getReplies,
     addReply,
     deleteReply,
-    getNotifications
+    getNotifications,
+    updateNotificationRead,
+    markAllNotificationsRead,
+    createNotification
 }
