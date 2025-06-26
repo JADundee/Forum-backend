@@ -21,26 +21,31 @@ const getAllUsers = async (req, res) => {
 // @route POST /register
 // @access Public
 const createNewUser = async (req, res) => {
-    const { username, password, roles } = req.body
+    const { username, email, password, roles } = req.body
 
     // Confirm data
-    if (!username || !password) {
+    if (!username || !email || !password) {
         return res.status(400).json({ message: 'All fields are required' })
     }
 
     // Check for duplicate username
-    const duplicate = await User.findOne({ username }).collation({ locale: 'en', strength: 2 }).lean().exec()
-
-    if (duplicate) {
+    const duplicateUsername = await User.findOne({ username }).collation({ locale: 'en', strength: 2 }).lean().exec()
+    if (duplicateUsername) {
         return res.status(409).json({ message: 'Duplicate username' })
+    }
+
+    // Check for duplicate email
+    const duplicateEmail = await User.findOne({ email }).collation({ locale: 'en', strength: 2 }).lean().exec()
+    if (duplicateEmail) {
+        return res.status(409).json({ message: 'Duplicate email' })
     }
 
     // Hash password 
     const hashedPwd = await bcrypt.hash(password, 10) // salt rounds
 
     const userObject = (!Array.isArray(roles) || !roles.length)
-        ? { username, "password": hashedPwd }
-        : { username, "password": hashedPwd, roles }
+        ? { username, email, "password": hashedPwd }
+        : { username, email, "password": hashedPwd, roles }
 
     // Create and store new user 
     const user = await User.create(userObject)
@@ -56,6 +61,7 @@ const createNewUser = async (req, res) => {
 // @route PATCH /users
 // @access Private
 const updateUser = async (req, res) => {
+    console.log('UpdateUser payload:', req.body); // Debug log
     const { id, username, roles, active, password } = req.body
 
     // Confirm data 

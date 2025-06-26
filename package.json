@@ -23,6 +23,7 @@
     "mongodb": "^6.6.2",
     "mongoose": "^8.15.1",
     "mongoose-sequence": "^6.0.1",
+    "nodemailer": "^7.0.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
