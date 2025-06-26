@@ -1,6 +1,8 @@
 const User = require('../models/User')
 const Note = require('../models/Note')
 const bcrypt = require('bcrypt')
+const Reply = require('../models/Reply')
+const Notification = require('../models/Notification')
 
 // @desc Get all users
 // @route GET /users
@@ -91,6 +93,7 @@ const updateUser = async (req, res) => {
     if (password) {
         // Hash password 
         user.password = await bcrypt.hash(password, 10) // salt rounds 
+        console.log('Password updated for user', user.username, 'New hash:', user.password)
     }
 
     const updatedUser = await user.save()
@@ -109,12 +112,6 @@ const deleteUser = async (req, res) => {
         return res.status(400).json({ message: 'User ID Required' })
     }
 
-    // Does the user still have assigned notes?
-    const note = await Note.findOne({ user: id }).lean().exec()
-    if (note) {
-        return res.status(400).json({ message: 'User has assigned notes' })
-    }
-
     // Does the user exist to delete?
     const user = await User.findById(id).exec()
 
@@ -122,9 +119,30 @@ const deleteUser = async (req, res) => {
         return res.status(400).json({ message: 'User not found' })
     }
 
+    // Delete all notes by this user
+    const notes = await Note.find({ user: id }).lean().exec()
+    const noteIds = notes.map(note => note._id)
+    await Note.deleteMany({ user: id })
+
+    // Delete all replies by this user
+    await Reply.deleteMany({ user: id })
+
+    // Delete all replies on this user's notes
+    if (noteIds.length > 0) {
+        await Reply.deleteMany({ note: { $in: noteIds } })
+        // Delete all notifications for these notes
+        await Notification.deleteMany({ noteId: { $in: noteIds.map(id => id.toString()) } })
+    }
+
+    // Delete all notifications for this user
+    await Notification.deleteMany({ userId: id.toString() })
+
+    // Delete all notifications where this user is the actor (username field)
+    await Notification.deleteMany({ username: user.username })
+
     const result = await user.deleteOne()
 
-    const reply = `Username ${result.username} with ID ${result._id} deleted`
+    const reply = `Username ${result.username} with ID ${result._id} and all related data deleted`
 
     res.json(reply)
 }
