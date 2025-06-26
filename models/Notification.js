@@ -24,6 +24,10 @@ const notificationSchema = new mongoose.Schema({
   read: {
     type: Boolean,
     default: false
+  },
+  replyId: {
+    type: String,
+    required: false
   }
 });
 

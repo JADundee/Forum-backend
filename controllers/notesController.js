@@ -149,15 +149,19 @@ const addReply = async (req, res) => {
     const reply = await Reply.create({ note: noteId, text: replyText, user: user._id })
     res.json(reply)
 
-     // Create a notification when a reply is added
-    const notification = new Notification({
-      userId: user._id,
-      noteId: noteId,
-      replyText: replyText,
-      username: user.username,
-      read: false
-    });
-    await notification.save();
+    // Only create a notification if the reply is NOT by the note owner
+    const note = await Note.findById(noteId).lean();
+    if (note && String(note.user) !== String(user._id)) {
+      const notification = new Notification({
+        userId: note.user,
+        noteId: noteId,
+        replyText: replyText,
+        username: user.username,
+        replyId: reply._id,
+        read: false
+      });
+      await notification.save();
+    }
 } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Server error' })
@@ -245,7 +249,7 @@ const markAllNotificationsRead = async (req, res) => {
 // @access Private
 const createNotification = async (req, res) => {
     try {
-        const { userId, noteId, replyText, username } = req.body;
+        const { userId, noteId, replyText, username, replyId } = req.body;
         if (!userId || !noteId || !replyText || !username) {
             return res.status(400).json({ message: 'All fields are required' });
         }
@@ -254,6 +258,7 @@ const createNotification = async (req, res) => {
             noteId,
             replyText,
             username,
+            replyId,
             read: false
         });
         await notification.save();
