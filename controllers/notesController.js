@@ -54,7 +54,7 @@ const createNewNote = async (req, res) => {
     }
 
     // Create and store the new user 
-    const note = await Note.create({ user: req.user._id, title, text })
+    const note = await Note.create({ user: req.user._id, title, text, editedBy: null })
     
     if (note) { // Created 
         return res.status(201).json({ message: 'New note created' })
@@ -94,6 +94,7 @@ const updateNote = async (req, res) => {
     note.title = title
     note.text = text
     note.completed = completed
+    note.editedBy = req.user.username
 
     const updatedNote = await note.save()
 
@@ -118,9 +119,15 @@ const deleteNote = async (req, res) => {
         return res.status(400).json({ message: 'Note not found' })
     }
 
+    // Delete all replies associated with this note
+    await Reply.deleteMany({ note: id });
+
+    // Delete all notifications associated with this note
+    await Notification.deleteMany({ noteId: id });
+
     const result = await note.deleteOne()
 
-    const reply = `Note '${result.title}' with ID ${result._id} deleted`
+    const reply = `Note '${result.title}' with ID ${result._id} deleted (and associated replies and notifications)`
 
     res.json(reply)
 }
@@ -253,6 +260,10 @@ const createNotification = async (req, res) => {
         if (!userId || !noteId || !replyText || !username) {
             return res.status(400).json({ message: 'All fields are required' });
         }
+        // Prevent users from creating notifications for their own actions
+        if (req.user && String(req.user._id) === String(userId)) {
+            return res.status(400).json({ message: 'Cannot create notification for your own action.' });
+        }
         const notification = new Notification({
             userId,
             noteId,
@@ -269,6 +280,31 @@ const createNotification = async (req, res) => {
     }
 };
 
+// @desc Delete a notification
+// @route DELETE /notifications/:id
+// @access Private
+const deleteNotification = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: 'Notification ID required' });
+        }
+        // Only allow users to delete their own notifications
+        const notification = await Notification.findById(id);
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+        if (String(notification.userId) !== String(req.user._id)) {
+            return res.status(403).json({ message: 'Not authorized to delete this notification' });
+        }
+        await notification.deleteOne();
+        res.json({ message: `Notification with ID ${id} deleted` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error deleting notification' });
+    }
+};
+
 module.exports = {
     getAllNotes,
     createNewNote,
@@ -280,5 +316,6 @@ module.exports = {
     getNotifications,
     updateNotificationRead,
     markAllNotificationsRead,
-    createNotification
+    createNotification,
+    deleteNotification
 }

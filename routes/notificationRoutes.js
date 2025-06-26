@@ -9,5 +9,6 @@ router.get('/', notesController.getNotifications)
 router.patch('/mark-all-read', notesController.markAllNotificationsRead)
 router.patch('/:id', notesController.updateNotificationRead)
 router.post('/', notesController.createNotification)
+router.delete('/:id', notesController.deleteNotification)
 
 module.exports = router

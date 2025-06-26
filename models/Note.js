@@ -19,6 +19,10 @@ const noteSchema = new mongoose.Schema(
         completed: {
             type: Boolean,
             default: false
+        },
+        editedBy: {
+            type: String,
+            default: null
         }
     },
     {
