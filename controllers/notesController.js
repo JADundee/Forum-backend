@@ -305,6 +305,29 @@ const deleteNotification = async (req, res) => {
     }
 };
 
+// @desc Get all replies by user
+// @route GET /notes/replies-by-user?userId=...
+// @access Private
+const getRepliesByUser = async (req, res) => {
+    const { userId } = req.query;
+    // Only allow if the authenticated user matches the requested userId
+    if (!userId || req.user._id !== userId) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    try {
+        const replies = await Reply.find({ user: userId }).populate('note', 'title').lean();
+        // Format replies to include noteTitle
+        const formatted = replies.map(r => ({
+            ...r,
+            noteTitle: r.note && r.note.title ? r.note.title : ''
+        }));
+        res.json(formatted);
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+}
+
 module.exports = {
     getAllNotes,
     createNewNote,
@@ -317,5 +340,6 @@ module.exports = {
     updateNotificationRead,
     markAllNotificationsRead,
     createNotification,
-    deleteNotification
+    deleteNotification,
+    getRepliesByUser
 }

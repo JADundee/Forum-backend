@@ -8,7 +8,8 @@ const replySchema = new mongoose.Schema({
     },
     text: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,

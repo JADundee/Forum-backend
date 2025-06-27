@@ -25,9 +25,16 @@ const getAllUsers = async (req, res) => {
 const createNewUser = async (req, res) => {
     const { username, email, password, roles } = req.body
 
-    // Confirm data
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: 'All fields are required' })
+    // Validate input formats
+    const errors = [];
+    if (!username) errors.push('Username is required');
+    else if (username.length < 3 || username.length > 20) errors.push('Username must be 3-20 characters long');
+    if (!email) errors.push('Email is required');
+    else if (!/^\S+@\S+\.\S+$/.test(email)) errors.push('Email format is invalid');
+    if (!password) errors.push('Password is required');
+    else if (!/^[A-Za-z0-9!@#$%]{4,12}$/.test(password)) errors.push('Password must be 4-12 characters and only contain letters, numbers, and !@#$%');
+    if (errors.length > 0) {
+        return res.status(400).json({ message: errors.join('. ') });
     }
 
     // Check for duplicate username
@@ -63,7 +70,6 @@ const createNewUser = async (req, res) => {
 // @route PATCH /users
 // @access Private
 const updateUser = async (req, res) => {
-    console.log('UpdateUser payload:', req.body); // Debug log
     const { id, username, roles, active, password } = req.body
 
     // Confirm data 
@@ -91,9 +97,13 @@ const updateUser = async (req, res) => {
     user.active = active
 
     if (password) {
+        // Check if new password is the same as the current password
+        const isSame = await bcrypt.compare(password, user.password);
+        if (isSame) {
+            return res.status(400).json({ message: 'New password must be different from the current password.' });
+        }
         // Hash password 
         user.password = await bcrypt.hash(password, 10) // salt rounds 
-        console.log('Password updated for user', user.username, 'New hash:', user.password)
     }
 
     const updatedUser = await user.save()

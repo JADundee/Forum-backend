@@ -18,4 +18,7 @@ router.route('/:noteId/replies')
 router.route('/replies/:replyId')
     .delete(notesController.deleteReply)
 
+router.route('/replies-by-user')
+    .get(notesController.getRepliesByUser)
+
 module.exports = router

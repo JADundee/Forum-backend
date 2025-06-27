@@ -11,7 +11,8 @@ const notificationSchema = new mongoose.Schema({
 },
   replyText: { 
     type: String, 
-    required: true 
+    required: true,
+    trim: true
 },
   username: { 
     type: String, 
