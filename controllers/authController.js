@@ -4,6 +4,53 @@ const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer')
 const crypto = require('crypto')
 
+// Helper to get cookie options
+const getCookieOptions = (isClearing = false) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isClearing) {
+        return isProduction
+            ? { httpOnly: true, secure: true, sameSite: 'None' }
+            : { httpOnly: true, secure: false, sameSite: 'Lax' };
+    }
+    return isProduction
+        ? {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        }
+        : {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'Lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        };
+};
+
+// Helper to generate access token
+const generateAccessToken = (user) => {
+    return jwt.sign(
+        {
+            "UserInfo": {
+                "_id": user._id,
+                "username": user.username,
+                "roles": user.roles
+            }
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: '15m' }
+    );
+};
+
+// Nodemailer transporter (singleton)
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 // @desc Login
 // @route POST /auth
 // @access Public
@@ -30,17 +77,7 @@ const login = async (req, res) => {
 
     if (!match) return res.status(401).json({ message: 'Unauthorized' })
 
-    const accessToken = jwt.sign(
-        {
-            "UserInfo": {
-                "_id": foundUser._id,
-                "username": foundUser.username,
-                "roles": foundUser.roles
-            }
-        },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: '15m' }
-    )
+    const accessToken = generateAccessToken(foundUser)
 
     const refreshToken = jwt.sign(
         { "username": foundUser.username },
@@ -48,22 +85,8 @@ const login = async (req, res) => {
         { expiresIn: '7d' }
     )
 
-    // Set cookie options based on environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = isProduction
-      ? {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'None',
-          maxAge: 7 * 24 * 60 * 60 * 1000
-        }
-      : {
-          httpOnly: true,
-          secure: false,
-          sameSite: 'Lax',
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        //domain: ''
-        };
+    // Set cookie options
+    const cookieOptions = getCookieOptions()
 
     // Create secure cookie with refresh token 
     res.cookie('jwt', refreshToken, cookieOptions)
@@ -92,18 +115,7 @@ const refresh = (req, res) => {
 
             if (!foundUser) return res.status(401).json({ message: 'Unauthorized' })
 
-            const accessToken = jwt.sign(
-                {
-                    "UserInfo": {
-                        "_id": foundUser._id,
-                        "username": foundUser.username,
-                        "roles": foundUser.roles
-                    }
-                },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: '15m' }
-            )
-                
+            const accessToken = generateAccessToken(foundUser)
 
             res.json({ accessToken })
         }
@@ -116,19 +128,8 @@ const refresh = (req, res) => {
 const logout = (req, res) => {
     const cookies = req.cookies
     if (!cookies?.jwt) return res.sendStatus(204) //No content
-    // Set cookie options based on environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = isProduction
-      ? {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'None'
-        }
-      : {
-          httpOnly: true,
-          secure: false,
-          sameSite: 'Lax'
-        };
+    // Set cookie options
+    const cookieOptions = getCookieOptions(true)
     res.clearCookie('jwt', cookieOptions)
     res.json({ message: 'Cookie cleared' })
 }
@@ -151,15 +152,6 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
-
-    // Set up Nodemailer transport (replace with your config)
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
 
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${token}`;
     const mailOptions = {

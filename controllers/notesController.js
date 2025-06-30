@@ -311,7 +311,7 @@ const deleteNotification = async (req, res) => {
 const getRepliesByUser = async (req, res) => {
     const { userId } = req.query;
     // Only allow if the authenticated user matches the requested userId
-    if (!userId || req.user._id !== userId) {
+    if (!userId || String(req.user._id) !== String(userId)) {
         return res.status(403).json({ message: 'Forbidden' });
     }
 
