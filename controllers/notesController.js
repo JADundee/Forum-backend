@@ -328,6 +328,30 @@ const getRepliesByUser = async (req, res) => {
     }
 }
 
+// @desc Edit a reply
+// @route PATCH /notes/replies/:replyId
+// @access Private
+const editReply = async (req, res) => {
+    const { replyId } = req.params;
+    const { replyText } = req.body;
+    const userId = req.user._id;
+
+    if (!replyId || !replyText) {
+        return res.status(400).json({ message: 'Reply ID and new text are required' });
+    }
+
+    const reply = await Reply.findById(replyId).exec();
+    if (!reply) {
+        return res.status(404).json({ message: 'Reply not found' });
+    }
+    if (String(reply.user) !== String(userId)) {
+        return res.status(403).json({ message: 'Not authorized to edit this reply' });
+    }
+    reply.text = replyText;
+    await reply.save();
+    res.json({ message: 'Reply updated', reply });
+};
+
 module.exports = {
     getAllNotes,
     createNewNote,
@@ -341,5 +365,6 @@ module.exports = {
     markAllNotificationsRead,
     createNotification,
     deleteNotification,
-    getRepliesByUser
+    getRepliesByUser,
+    editReply
 }

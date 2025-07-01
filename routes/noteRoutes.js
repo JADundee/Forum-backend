@@ -17,6 +17,7 @@ router.route('/:noteId/replies')
     
 router.route('/replies/:replyId')
     .delete(notesController.deleteReply)
+    .patch(notesController.editReply)
 
 router.route('/replies-by-user')
     .get(notesController.getRepliesByUser)
