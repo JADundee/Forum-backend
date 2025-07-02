@@ -7,11 +7,11 @@ const notificationSchema = new mongoose.Schema({
 },
   noteId: { 
     type: String, 
-    required: true 
+    required: false 
 },
   replyText: { 
     type: String, 
-    required: true,
+    required: false,
     trim: true
 },
   username: { 
@@ -27,6 +27,18 @@ const notificationSchema = new mongoose.Schema({
     default: false
   },
   replyId: {
+    type: String,
+    required: false
+  },
+  type: {
+    type: String,
+    required: false
+  },
+  message: {
+    type: String,
+    required: false
+  },
+  noteTitle: {
     type: String,
     required: false
   }

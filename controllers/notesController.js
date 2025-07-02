@@ -2,6 +2,7 @@ const Note = require('../models/Note')
 const User = require('../models/User')
 const Reply = require('../models/Reply')
 const Notification = require('../models/Notification')
+const Like = require('../models/Like')
 
 // @desc Get all notes 
 // @route GET /notes
@@ -119,15 +120,27 @@ const deleteNote = async (req, res) => {
         return res.status(400).json({ message: 'Note not found' })
     }
 
+    // Get all reply IDs for this note BEFORE deleting replies
+    const replies = await Reply.find({ note: id }).select('_id').lean();
+    const replyIds = replies.map(r => r._id);
+
     // Delete all replies associated with this note
     await Reply.deleteMany({ note: id });
 
-    // Delete all notifications associated with this note
+    // Delete all notifications associated with this note (for all users)
     await Notification.deleteMany({ noteId: id });
+
+    // Delete all likes associated with this note
+    await Like.deleteMany({ targetId: id, targetType: 'note' });
+
+    // Delete all likes associated with replies to this note
+    if (replyIds.length > 0) {
+        await Like.deleteMany({ targetId: { $in: replyIds }, targetType: 'reply' });
+    }
 
     const result = await note.deleteOne()
 
-    const reply = `Note '${result.title}' with ID ${result._id} deleted (and associated replies and notifications)`
+    const reply = `Note '${result.title}' with ID ${result._id} deleted (and associated replies, notifications, and likes)`
 
     res.json(reply)
 }
@@ -162,9 +175,11 @@ const addReply = async (req, res) => {
       const notification = new Notification({
         userId: note.user,
         noteId: noteId,
+        noteTitle: note.title,
         replyText: replyText,
         username: user.username,
         replyId: reply._id,
+        type: 'reply',
         read: false
       });
       await notification.save();
@@ -193,9 +208,12 @@ const deleteReply = async (req, res) => {
         return res.status(400).json({ message: 'Reply not found' })
     }
 
+    // Delete all likes associated with this reply
+    await Like.deleteMany({ targetId: replyId, targetType: 'reply' });
+
     const result = await reply.deleteOne()
 
-    res.json({ message: `Reply with ID ${replyId} deleted` })
+    res.json({ message: `Reply with ID ${replyId} deleted (and associated likes)` })
 }
 
 const getNotifications = async (req, res) => {

@@ -157,9 +157,48 @@ const deleteUser = async (req, res) => {
     res.json(reply)
 }
 
+// @desc Get liked notes for a user
+// @route GET /users/:userId/liked-notes
+// @access Private
+const getLikedNotes = async (req, res) => {
+    const { userId } = req.params;
+    if (!userId || String(req.user._id) !== String(userId)) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
+    const user = await User.findById(userId).populate({
+        path: 'likedNotes',
+        select: '-__v',
+        populate: { path: 'user', select: 'username' }
+    });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user.likedNotes);
+};
+
+// @desc Get liked replies for a user
+// @route GET /users/:userId/liked-replies
+// @access Private
+const getLikedReplies = async (req, res) => {
+    const { userId } = req.params;
+    if (!userId || String(req.user._id) !== String(userId)) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
+    const user = await User.findById(userId).populate({
+        path: 'likedReplies',
+        select: '-__v',
+        populate: [
+            { path: 'user', select: 'username' },
+            { path: 'note', select: 'title' }
+        ]
+    });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user.likedReplies);
+};
+
 module.exports = {
     getAllUsers,
     createNewUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    getLikedNotes,
+    getLikedReplies
 }

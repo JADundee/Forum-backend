@@ -13,4 +13,10 @@ router.route('/')
     .patch(usersController.updateUser)
     .delete(usersController.deleteUser)
 
+router.route('/:userId/liked-notes')
+    .get(usersController.getLikedNotes)
+
+router.route('/:userId/liked-replies')
+    .get(usersController.getLikedReplies)
+
 module.exports = router
