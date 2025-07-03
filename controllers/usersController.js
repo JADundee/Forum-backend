@@ -3,6 +3,7 @@ const Note = require('../models/Note')
 const bcrypt = require('bcrypt')
 const Reply = require('../models/Reply')
 const Notification = require('../models/Notification')
+const Like = require('../models/Like')
 
 // @desc Get all users
 // @route GET /users
@@ -165,13 +166,21 @@ const getLikedNotes = async (req, res) => {
     if (!userId || String(req.user._id) !== String(userId)) {
         return res.status(403).json({ message: 'Forbidden' });
     }
-    const user = await User.findById(userId).populate({
-        path: 'likedNotes',
-        select: '-__v',
-        populate: { path: 'user', select: 'username' }
+    // Find all Like documents for this user and notes
+    const likes = await Like.find({ user: userId, targetType: 'note' }).sort({ createdAt: -1 });
+    const noteIds = likes.map(like => like.targetId);
+    // Fetch notes and populate user
+    const notes = await Note.find({ _id: { $in: noteIds } })
+        .populate('user', 'username')
+        .lean();
+    // Attach like createdAt to each note for sorting
+    const notesWithLikeDate = notes.map(note => {
+        const like = likes.find(l => String(l.targetId) === String(note._id));
+        return { ...note, likedAt: like?.createdAt };
     });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user.likedNotes);
+    // Sort by like date (most recent first)
+    notesWithLikeDate.sort((a, b) => new Date(b.likedAt) - new Date(a.likedAt));
+    res.json(notesWithLikeDate);
 };
 
 // @desc Get liked replies for a user
@@ -182,16 +191,22 @@ const getLikedReplies = async (req, res) => {
     if (!userId || String(req.user._id) !== String(userId)) {
         return res.status(403).json({ message: 'Forbidden' });
     }
-    const user = await User.findById(userId).populate({
-        path: 'likedReplies',
-        select: '-__v',
-        populate: [
-            { path: 'user', select: 'username' },
-            { path: 'note', select: 'title' }
-        ]
+    // Find all Like documents for this user and replies
+    const likes = await Like.find({ user: userId, targetType: 'reply' }).sort({ createdAt: -1 });
+    const replyIds = likes.map(like => like.targetId);
+    // Fetch replies and populate user and note
+    const replies = await Reply.find({ _id: { $in: replyIds } })
+        .populate('user', 'username')
+        .populate('note', 'title')
+        .lean();
+    // Attach like createdAt to each reply for sorting
+    const repliesWithLikeDate = replies.map(reply => {
+        const like = likes.find(l => String(l.targetId) === String(reply._id));
+        return { ...reply, likedAt: like?.createdAt };
     });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user.likedReplies);
+    // Sort by like date (most recent first)
+    repliesWithLikeDate.sort((a, b) => new Date(b.likedAt) - new Date(a.likedAt));
+    res.json(repliesWithLikeDate);
 };
 
 module.exports = {
