@@ -155,6 +155,18 @@ const getReplies = async (req, res) => {
     res.json(replies);
 }
 
+// Helper function to extract tagged usernames from text
+function extractTaggedUsernames(text) {
+    // Matches @username (alphanumeric and underscores)
+    const tagRegex = /@(\w+)/g;
+    const tags = new Set();
+    let match;
+    while ((match = tagRegex.exec(text)) !== null) {
+        tags.add(match[1]);
+    }
+    return Array.from(tags);
+}
+
 // POST /notes/:noteId/replies
 const addReply = async (req, res) => {
     try {
@@ -169,9 +181,25 @@ const addReply = async (req, res) => {
     const reply = await Reply.create({ note: noteId, text: replyText, user: user._id })
     res.json(reply)
 
-    // Only create a notification if the reply is NOT by the note owner
+    // Always fetch the note and note owner for notifications
     const note = await Note.findById(noteId).lean();
-    if (note && String(note.user) !== String(user._id)) {
+    let noteOwnerUsername = null;
+    if (note && note.user) {
+      const noteOwner = await User.findById(note.user).lean();
+      noteOwnerUsername = noteOwner?.username;
+    }
+
+    // --- Tag Notification Logic ---
+    const taggedUsernames = extractTaggedUsernames(replyText);
+    // Check if the note owner is tagged (by username)
+    const isNoteOwnerTagged = noteOwnerUsername && taggedUsernames.includes(noteOwnerUsername);
+
+    // Only create a reply notification if the note owner is NOT tagged and is not the reply author
+    if (
+      note &&
+      String(note.user) !== String(user._id) &&
+      !isNoteOwnerTagged
+    ) {
       const notification = new Notification({
         userId: note.user,
         noteId: noteId,
@@ -184,6 +212,30 @@ const addReply = async (req, res) => {
       });
       await notification.save();
     }
+
+    // Tag notifications for all tagged users except the reply author
+    if (taggedUsernames.length > 0) {
+      for (const taggedUsername of taggedUsernames) {
+        // Don't notify the author if they tag themselves
+        if (taggedUsername === user.username) continue;
+        const taggedUser = await User.findOne({ username: taggedUsername });
+        if (taggedUser && String(taggedUser._id) !== String(user._id)) {
+          const tagNotification = new Notification({
+            userId: taggedUser._id,
+            noteId: noteId,
+            noteTitle: note ? note.title : undefined,
+            replyText: replyText,
+            username: user.username,
+            replyId: reply._id,
+            type: 'tag',
+            read: false,
+            message: `${user.username} mentioned you in a reply.`
+          });
+          await tagNotification.save();
+        }
+      }
+    }
+
 } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Server error' })
