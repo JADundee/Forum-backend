@@ -6,4 +6,4 @@
 ## controllers
 ## user authorization/authentication
 ## mongoose schemas
-## react router
+## routes
