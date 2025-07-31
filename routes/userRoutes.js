@@ -13,8 +13,8 @@ router.route('/')
     .patch(usersController.updateUser)
     .delete(usersController.deleteUser)
 
-router.route('/:userId/liked-notes')
-    .get(usersController.getLikedNotes)
+router.route('/:userId/liked-forums')
+    .get(usersController.getLikedForums)
 
 router.route('/:userId/liked-replies')
     .get(usersController.getLikedReplies)

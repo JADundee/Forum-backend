@@ -1,5 +1,5 @@
 const User = require('../models/User')
-const Note = require('../models/Note')
+const Forum = require('../models/Forum')
 const bcrypt = require('bcrypt')
 const Reply = require('../models/Reply')
 const Notification = require('../models/Notification')
@@ -130,19 +130,19 @@ const deleteUser = async (req, res) => {
         return res.status(400).json({ message: 'User not found' })
     }
 
-    // Delete all notes by this user
-    const notes = await Note.find({ user: id }).lean().exec()
-    const noteIds = notes.map(note => note._id)
-    await Note.deleteMany({ user: id })
+    // Delete all forums by this user
+    const forums = await Forum.find({ user: id }).lean().exec()
+    const forumIds = forums.map(forum => forum._id)
+    await Forum.deleteMany({ user: id })
 
     // Delete all replies by this user
     await Reply.deleteMany({ user: id })
 
-    // Delete all replies on this user's notes
-    if (noteIds.length > 0) {
-        await Reply.deleteMany({ note: { $in: noteIds } })
-        // Delete all notifications for these notes
-        await Notification.deleteMany({ noteId: { $in: noteIds.map(id => id.toString()) } })
+    // Delete all replies on this user's forums
+    if (forumIds.length > 0) {
+        await Reply.deleteMany({ forum: { $in: forumIds } })
+        // Delete all notifications for these forums
+        await Notification.deleteMany({ forumId: { $in: forumIds.map(id => id.toString()) } })
     }
 
     // Delete all notifications for this user
@@ -158,29 +158,29 @@ const deleteUser = async (req, res) => {
     res.json(reply)
 }
 
-// @desc Get liked notes for a user
-// @route GET /users/:userId/liked-notes
+// @desc Get liked forums for a user
+// @route GET /users/:userId/liked-forums
 // @access Private
-const getLikedNotes = async (req, res) => {
+const getLikedForums = async (req, res) => {
     const { userId } = req.params;
     if (!userId || String(req.user._id) !== String(userId)) {
         return res.status(403).json({ message: 'Forbidden' });
     }
-    // Find all Like documents for this user and notes
-    const likes = await Like.find({ user: userId, targetType: 'note' }).sort({ createdAt: -1 });
-    const noteIds = likes.map(like => like.targetId);
-    // Fetch notes and populate user
-    const notes = await Note.find({ _id: { $in: noteIds } })
+    // Find all Like documents for this user and forums
+    const likes = await Like.find({ user: userId, targetType: 'forum' }).sort({ createdAt: -1 });
+    const forumIds = likes.map(like => like.targetId);
+    // Fetch forums and populate user
+    const forums = await Forum.find({ _id: { $in: forumIds } })
         .populate('user', 'username')
         .lean();
-    // Attach like createdAt to each note for sorting
-    const notesWithLikeDate = notes.map(note => {
-        const like = likes.find(l => String(l.targetId) === String(note._id));
-        return { ...note, likedAt: like?.createdAt };
+    // Attach like createdAt to each forum for sorting
+    const forumsWithLikeDate = forums.map(forum => {
+        const like = likes.find(l => String(l.targetId) === String(forum._id));
+        return { ...forum, likedAt: like?.createdAt };
     });
     // Sort by like date (most recent first)
-    notesWithLikeDate.sort((a, b) => new Date(b.likedAt) - new Date(a.likedAt));
-    res.json(notesWithLikeDate);
+    forumsWithLikeDate.sort((a, b) => new Date(b.likedAt) - new Date(a.likedAt));
+    res.json(forumsWithLikeDate);
 };
 
 // @desc Get liked replies for a user
@@ -194,10 +194,10 @@ const getLikedReplies = async (req, res) => {
     // Find all Like documents for this user and replies
     const likes = await Like.find({ user: userId, targetType: 'reply' }).sort({ createdAt: -1 });
     const replyIds = likes.map(like => like.targetId);
-    // Fetch replies and populate user and note
+    // Fetch replies and populate user and forum
     const replies = await Reply.find({ _id: { $in: replyIds } })
         .populate('user', 'username')
-        .populate('note', 'title')
+        .populate('forum', 'title')
         .lean();
     // Attach like createdAt to each reply for sorting
     const repliesWithLikeDate = replies.map(reply => {
@@ -214,6 +214,6 @@ module.exports = {
     createNewUser,
     updateUser,
     deleteUser,
-    getLikedNotes,
+    getLikedForums,
     getLikedReplies
 }

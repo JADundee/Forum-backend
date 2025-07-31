@@ -30,7 +30,7 @@ app.use('/', require('./routes/root'))
 app.use('/register', require('./routes/userRoutes'))
 app.use('/auth', require('./routes/authRoutes'))
 app.use('/users', require('./routes/userRoutes'))
-app.use('/notes', require('./routes/noteRoutes'))
+app.use('/forums', require('./routes/forumRoutes'))
 app.use('/notifications', require('./routes/notificationRoutes'))
 app.use('/likes', require('./routes/likeRoutes'))
 

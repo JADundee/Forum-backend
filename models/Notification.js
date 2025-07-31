@@ -5,7 +5,7 @@ const notificationSchema = new mongoose.Schema({
     type: String, 
     required: true 
 },
-  noteId: { 
+  forumId: { 
     type: String, 
     required: false 
 },
@@ -38,7 +38,7 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: false
   },
-  noteTitle: {
+  forumTitle: {
     type: String,
     required: false
   }

@@ -1,39 +1,39 @@
-const Note = require('../models/Note')
+const Forum = require('../models/Forum')
 const User = require('../models/User')
 const Reply = require('../models/Reply')
 const Notification = require('../models/Notification')
 const Like = require('../models/Like')
 
-// @desc Get all notes 
-// @route GET /notes
+// @desc Get all forums 
+// @route GET /forums
 // @access Private
-const getAllNotes = async (req, res) => {
-    // Get all notes from MongoDB
-    const notes = await Note.find().lean()
+const getAllForums = async (req, res) => {
+    // Get all forums from MongoDB
+    const forums = await Forum.find().lean()
    
 
-    // If no notes 
-    if (!notes?.length) {
-        return res.status(400).json({ message: 'No notes found' })
+    // If no forums 
+    if (!forums?.length) {
+        return res.status(400).json({ message: 'No forums found' })
     }
 
-    // Add username to each note before sending the response 
+    // Add username to each forum before sending the response 
     // See Promise.all with map() here: https://youtu.be/4lqJBBEpjRE 
     // You could also do this with a for...of loop
-    const notesWithUser = await Promise.all(notes.map(async (note) => {
-        const user = await User.findById(note.user).lean().exec()
+    const forumsWithUser = await Promise.all(forums.map(async (forum) => {
+        const user = await User.findById(forum.user).lean().exec()
        
-        return { ...note, username: user.username }
+        return { ...forum, username: user.username }
         
     }))
 
-    res.json(notesWithUser)
+    res.json(forumsWithUser)
 }
 
-// @desc Create new note
-// @route POST /notes
+// @desc Create new forum
+// @route POST /forums
 // @access Private
-const createNewNote = async (req, res) => {
+const createNewForum = async (req, res) => {
     const { title, text } = req.body
     
 
@@ -48,27 +48,27 @@ const createNewNote = async (req, res) => {
     }
 
     // Check for duplicate title
-    const duplicate = await Note.findOne({ title }).collation({ locale: 'en', strength: 2 }).lean().exec()
+    const duplicate = await Forum.findOne({ title }).collation({ locale: 'en', strength: 2 }).lean().exec()
 
     if (duplicate) {
-        return res.status(409).json({ message: 'Duplicate note title' })
+        return res.status(409).json({ message: 'Duplicate forum title' })
     }
 
     // Create and store the new user 
-    const note = await Note.create({ user: req.user._id, title, text, editedBy: null })
+    const forum = await Forum.create({ user: req.user._id, title, text, editedBy: null })
     
-    if (note) { // Created 
-        return res.status(201).json({ message: 'New note created' })
+    if (forum) { // Created 
+        return res.status(201).json({ message: 'New forum created' })
     } else {
-        return res.status(400).json({ message: 'Invalid note data received' })
+        return res.status(400).json({ message: 'Invalid forum data received' })
     }
     
 }
 
-// @desc Update a note
-// @route PATCH /notes
+// @desc Update a forum
+// @route PATCH /forums
 // @access Private
-const updateNote = async (req, res) => {
+const updateForum = async (req, res) => {
     const { id, user, title, text, completed } = req.body
 
     // Confirm data
@@ -76,82 +76,82 @@ const updateNote = async (req, res) => {
         return res.status(400).json({ message: 'All fields are required' })
     }
 
-    // Confirm note exists to update
-    const note = await Note.findById(id).exec()
+    // Confirm forum exists to update
+    const forum = await Forum.findById(id).exec()
 
-    if (!note) {
-        return res.status(400).json({ message: 'Note not found' })
+    if (!forum) {
+        return res.status(400).json({ message: 'Forum not found' })
     }
 
     // Check for duplicate title
-    const duplicate = await Note.findOne({ title }).collation({ locale: 'en', strength: 2 }).lean().exec()
+    const duplicate = await Forum.findOne({ title }).collation({ locale: 'en', strength: 2 }).lean().exec()
 
-    // Allow renaming of the original note 
+    // Allow renaming of the original forum 
     if (duplicate && duplicate?._id.toString() !== id) {
-        return res.status(409).json({ message: 'Duplicate note title' })
+        return res.status(409).json({ message: 'Duplicate forum title' })
     }
 
-    note.user = user
-    note.title = title
-    note.text = text
-    note.completed = completed
-    note.editedBy = req.user.username
+    forum.user = user
+    forum.title = title
+    forum.text = text
+    forum.completed = completed
+    forum.editedBy = req.user.username
 
-    const updatedNote = await note.save()
+    const updatedForum = await forum.save()
 
-    res.json(`'${updatedNote.title}' updated`)
+    res.json(`'${updatedForum.title}' updated`)
 }
 
-// @desc Delete a note
-// @route DELETE /notes
+// @desc Delete a forum
+// @route DELETE /forums
 // @access Private
-const deleteNote = async (req, res) => {
+const deleteForum = async (req, res) => {
     const { id } = req.body
 
     // Confirm data
     if (!id) {
-        return res.status(400).json({ message: 'Note ID required' })
+        return res.status(400).json({ message: 'Forum ID required' })
     }
 
-    // Confirm note exists to delete 
-    const note = await Note.findById(id).exec()
+    // Confirm forum exists to delete 
+    const forum = await Forum.findById(id).exec()
 
-    if (!note) {
-        return res.status(400).json({ message: 'Note not found' })
+    if (!forum) {
+        return res.status(400).json({ message: 'Forum not found' })
     }
 
-    // Get all reply IDs for this note BEFORE deleting replies
-    const replies = await Reply.find({ note: id }).select('_id').lean();
+    // Get all reply IDs for this forum BEFORE deleting replies
+    const replies = await Reply.find({ forum: id }).select('_id').lean();
     const replyIds = replies.map(r => r._id);
 
-    // Delete all replies associated with this note
-    await Reply.deleteMany({ note: id });
+    // Delete all replies associated with this forum
+    await Reply.deleteMany({ forum: id });
 
-    // Delete all notifications associated with this note (for all users)
-    await Notification.deleteMany({ noteId: id });
+    // Delete all notifications associated with this forum (for all users)
+    await Notification.deleteMany({ forumId: id });
 
-    // Delete all likes associated with this note
-    await Like.deleteMany({ targetId: id, targetType: 'note' });
+    // Delete all likes associated with this forum
+    await Like.deleteMany({ targetId: id, targetType: 'forum' });
 
-    // Delete all likes associated with replies to this note
+    // Delete all likes associated with replies to this forum
     if (replyIds.length > 0) {
         await Like.deleteMany({ targetId: { $in: replyIds }, targetType: 'reply' });
     }
 
-    const result = await note.deleteOne()
+    const result = await forum.deleteOne()
 
-    const reply = `Note '${result.title}' with ID ${result._id} deleted (and associated replies, notifications, and likes)`
+    const reply = `Forum '${result.title}' with ID ${result._id} deleted (and associated replies, notifications, and likes)`
 
     res.json(reply)
 }
 
-// GET /notes/:noteId/replies
+// GET /forums/:forumId/replies
 const getReplies = async (req, res) => {
-    const noteId = req.params.noteId;
-    if (!noteId) {
-        return res.status(400).json({ message: 'Note ID is required' });
+    const forumId = req.params.forumId;
+    if (!forumId) {
+        return res.status(400).json({ message: 'Forum ID is required' });
     }
-    const replies = await Reply.find({ note: noteId }).lean();
+    const replies = await Reply.find({ forum: forumId }).lean();
     res.json(replies);
 }
 
@@ -167,10 +167,10 @@ function extractTaggedUsernames(text) {
     return Array.from(tags);
 }
 
-// POST /notes/:noteId/replies
+// POST /forums/:forumId/replies
 const addReply = async (req, res) => {
     try {
-    const noteId = req.params.noteId
+    const forumId = req.params.forumId
     const { replyText } = req.body
     const user = req.user
 
@@ -178,32 +178,32 @@ const addReply = async (req, res) => {
         return res.status(400).json({ message: 'Reply is required' })
     }
 
-    const reply = await Reply.create({ note: noteId, text: replyText, user: user._id })
+    const reply = await Reply.create({ forum: forumId, text: replyText, user: user._id })
     res.json(reply)
 
-    // Always fetch the note and note owner for notifications
-    const note = await Note.findById(noteId).lean();
-    let noteOwnerUsername = null;
-    if (note && note.user) {
-      const noteOwner = await User.findById(note.user).lean();
-      noteOwnerUsername = noteOwner?.username;
+    // Always fetch the forum and forum owner for notifications
+    const forum = await Forum.findById(forumId).lean();
+    let forumOwnerUsername = null;
+    if (forum && forum.user) {
+      const forumOwner = await User.findById(forum.user).lean();
+      forumOwnerUsername = forumOwner?.username;
     }
 
     // --- Tag Notification Logic ---
     const taggedUsernames = extractTaggedUsernames(replyText);
-    // Check if the note owner is tagged (by username)
-    const isNoteOwnerTagged = noteOwnerUsername && taggedUsernames.includes(noteOwnerUsername);
+    // Check if the forum owner is tagged (by username)
+    const isForumOwnerTagged = forumOwnerUsername && taggedUsernames.includes(forumOwnerUsername);
 
-    // Only create a reply notification if the note owner is NOT tagged and is not the reply author
+    // Only create a reply notification if the forum owner is NOT tagged and is not the reply author
     if (
-      note &&
-      String(note.user) !== String(user._id) &&
-      !isNoteOwnerTagged
+      forum &&
+      String(forum.user) !== String(user._id) &&
+      !isForumOwnerTagged
     ) {
       const notification = new Notification({
-        userId: note.user,
-        noteId: noteId,
-        noteTitle: note.title,
+        userId: forum.user,
+        forumId: forumId,
+        forumTitle: forum.title,
         replyText: replyText,
         username: user.username,
         replyId: reply._id,
@@ -222,8 +222,8 @@ const addReply = async (req, res) => {
         if (taggedUser && String(taggedUser._id) !== String(user._id)) {
           const tagNotification = new Notification({
             userId: taggedUser._id,
-            noteId: noteId,
-            noteTitle: note ? note.title : undefined,
+            forumId: forumId,
+            forumTitle: forum ? forum.title : undefined,
             replyText: replyText,
             username: user.username,
             replyId: reply._id,
@@ -243,7 +243,7 @@ const addReply = async (req, res) => {
 }
 
 // @desc Delete a reply
-// @route DELETE /notes/replies/:replyId
+// @route DELETE /forums/replies/:replyId
 // @access Private
 const deleteReply = async (req, res) => {
     const { replyId } = req.params
@@ -326,8 +326,8 @@ const markAllNotificationsRead = async (req, res) => {
 // @access Private
 const createNotification = async (req, res) => {
     try {
-        const { userId, noteId, replyText, username, replyId } = req.body;
-        if (!userId || !noteId || !replyText || !username) {
+        const { userId, forumId, replyText, username, replyId } = req.body;
+        if (!userId || !forumId || !replyText || !username) {
             return res.status(400).json({ message: 'All fields are required' });
         }
         // Prevent users from creating notifications for their own actions
@@ -336,7 +336,7 @@ const createNotification = async (req, res) => {
         }
         const notification = new Notification({
             userId,
-            noteId,
+            forumId,
             replyText,
             username,
             replyId,
@@ -376,7 +376,7 @@ const deleteNotification = async (req, res) => {
 };
 
 // @desc Get all replies by user
-// @route GET /notes/replies-by-user?userId=...
+// @route GET /forums/replies-by-user?userId=...
 // @access Private
 const getRepliesByUser = async (req, res) => {
     const { userId } = req.query;
@@ -386,11 +386,11 @@ const getRepliesByUser = async (req, res) => {
     }
 
     try {
-        const replies = await Reply.find({ user: userId }).populate('note', 'title').lean();
-        // Format replies to include noteTitle
+        const replies = await Reply.find({ user: userId }).populate('forum', 'title').lean();
+        // Format replies to include forumTitle
         const formatted = replies.map(r => ({
             ...r,
-            noteTitle: r.note && r.note.title ? r.note.title : ''
+            forumTitle: r.forum && r.forum.title ? r.forum.title : ''
         }));
         res.json(formatted);
     } catch (err) {
@@ -399,7 +399,7 @@ const getRepliesByUser = async (req, res) => {
 }
 
 // @desc Edit a reply
-// @route PATCH /notes/replies/:replyId
+// @route PATCH /forums/replies/:replyId
 // @access Private
 const editReply = async (req, res) => {
     const { replyId } = req.params;
@@ -423,10 +423,10 @@ const editReply = async (req, res) => {
 };
 
 module.exports = {
-    getAllNotes,
-    createNewNote,
-    updateNote,
-    deleteNote,
+    getAllForums,
+    createNewForum,
+    updateForum,
+    deleteForum,
     getReplies,
     addReply,
     deleteReply,

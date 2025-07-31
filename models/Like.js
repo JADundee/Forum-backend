@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const likeSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  targetId: { type: mongoose.Schema.Types.ObjectId, required: true }, // note or reply
-  targetType: { type: String, enum: ['note', 'reply'], required: true },
+  targetId: { type: mongoose.Schema.Types.ObjectId, required: true }, // forum or reply
+  targetType: { type: String, enum: ['forum', 'reply'], required: true },
   createdAt: { type: Date, default: Date.now }
 });
 

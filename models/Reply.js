@@ -1,10 +1,10 @@
 const mongoose = require('mongoose')
 
 const replySchema = new mongoose.Schema({
-    note: {
+    forum: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
-        ref: 'Note'
+        ref: 'Forum'
     },
     text: {
         type: String,
