@@ -151,9 +151,26 @@ const getReplies = async (req, res) => {
     if (!forumId) {
         return res.status(400).json({ message: 'Forum ID is required' });
     }
-    const replies = await Reply.find({ forum: forumId }).lean();
-    res.json(replies);
-}
+
+ try {
+        // Populate username from User model
+        const replies = await Reply.find({ forum: forumId })
+            .populate('user', 'username') // normalize: always fetch latest username
+            .lean();
+
+        // Flatten populated user into { user, username }
+        const repliesWithUsername = replies.map(r => ({
+            ...r,
+            user: r.user?._id,          // keep the ObjectId reference
+            username: r.user?.username  // add the live username
+        }));
+
+        res.json(repliesWithUsername);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching replies' });
+    }
+};
 
 // Helper function to extract tagged usernames from text
 function extractTaggedUsernames(text) {
