@@ -74,7 +74,7 @@ const updateUser = async (req, res) => {
     const { id, username, roles, active, password } = req.body
 
     // Confirm data 
-    if (!id || !username || !Array.isArray(roles) || !roles.length || typeof active !== 'boolean') {
+    if (!id || !username || !Array.isArray(roles) || !roles.length) {
         return res.status(400).json({ message: 'All fields except password are required' })
     }
 
