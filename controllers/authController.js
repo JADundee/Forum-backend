@@ -153,7 +153,7 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://forum-ahrf.onrender.com'}/reset-password/${token}`;
     const mailOptions = {
         to: user.email,
         subject: 'Password Reset Request',
